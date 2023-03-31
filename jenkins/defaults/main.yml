@@ -1,3 +1,19 @@
 ---
 # defaults file for jenkins
-
+jenkins: 
+  project: "jenkins-pipeline"
+  base:
+    image: "jenkins/jenkins"
+    tag: "2.396"
+  plugins: 
+   - blueocean 
+   - docker-workflow
+   - kubernetes
+   - configuration-as-code
+   - openshift-client
+  containerfile:
+    path: "/tmp"
+    name: "Containerfile"
+  image:
+    name: "jenkins"
+    tag: "latest"

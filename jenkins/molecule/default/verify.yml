@@ -5,6 +5,97 @@
   hosts: all
   gather_facts: false
   tasks:
-  - name: Example assertion
+  - name: Add variables
+    set_fact:
+      jenkins:
+        project: jenkins-pipeline
+        service_account: jenkins-admin
+        cluster_role: jenkins-admin
+        cluster_role_binding: jenkins-admin
+        persistent_volume: jenkins-pv-volume
+        storage_class: local-storage
+        persistent_volume_claim: jenkins-pv-claim
+        deployment: jenkins
+        service: jenkins-service
+        route: jenkins-route
+        
+  - name: Gather ServiceAccount info
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: ServiceAccount
+      name: "{{ jenkins.service_account }}"
+      namespace: "{{ jenkins.project }}"
+    register: jenkins_service_account
+
+  - name: Gather ClusterRole info
+    kubernetes.core.k8s_info:
+      api_version: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      name: "{{ jenkins.cluster_role }}"
+    register: jenkins_cluster_role
+
+  - name: Gather ClusterRoleBinding info
+    kubernetes.core.k8s_info:
+      api_version: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      name: "{{ jenkins.cluster_role_binding }}"
+    register: jenkins_cluster_role_binding
+
+  - name: Gather local PersistentVolume
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: PersistentVolume
+      name: "{{ jenkins.persistent_volume }}"
+    register: jenkins_persistent_volume
+
+  - name: Gather StorageClass info
+    kubernetes.core.k8s_info:
+      api_version: storage.k8s.io/v1
+      kind: StorageClass
+      name: "{{ jenkins.storage_class }}"
+    register: jenkins_storage_class
+    
+  - name: Gather PersistentVolumeClaim info
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: PersistentVolumeClaim
+      name: "{{ jenkins.persistent_volume_claim }}"
+      namespace: "{{ jenkins.project }}"
+    register: jenkins_persistent_volume_claim
+  
+  - name: Gather Deployment info
+    kubernetes.core.k8s_info:
+      api_version: apps/v1
+      kind: Deployment
+      name: "{{ jenkins.deployment }}"
+      namespace: "{{ jenkins.project }}"
+    register: jenkins_deployment
+
+  - name: Gather Service info
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: Service
+      name: "{{ jenkins.service }}"
+      namespace: "{{ jenkins.project }}"
+    register: jenkins_service
+
+  - name: Gather Route info
+    kubernetes.core.k8s_info:
+      api_version: route.openshift.io/v1
+      kind: Route
+      name: "{{ jenkins.route }}"
+      namespace: "{{ jenkins.project }}"
+    register: jenkins_route
+
+  - name: Assert objects are created
     assert:
-      that: true
+      that:
+        - jenkins_service_account.resources[0].metadata.name == "{{ jenkins.service_account }}"
+        - jenkins_cluster_role.resources[0].metadata.name == "{{ jenkins.cluster_role }}"
+        - jenkins_cluster_role_binding.resources[0].metadata.name == "{{ jenkins.cluster_role_binding }}"
+        - jenkins_persistent_volume.resources[0].metadata.name == "{{ jenkins.persistent_volume }}"
+        - jenkins_storage_class.resources[0].metadata.name == "{{ jenkins.storage_class }}"
+        - jenkins_persistent_volume_claim.resources[0].metadata.name == "{{ jenkins.persistent_volume_claim }}"
+        - jenkins_deployment.resources[0].metadata.name == "{{ jenkins.deployment }}"
+        - jenkins_service.resources[0].metadata.name == "{{ jenkins.service }}"
+        - jenkins_route.resources[0].metadata.name == "{{ jenkins.route }}"

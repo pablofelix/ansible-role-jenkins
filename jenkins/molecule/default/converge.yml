@@ -2,6 +2,6 @@
 - name: Converge
   hosts: all
   tasks:
-    - name: "Include pablofelix.jenkins"
+    - name: "Include jenkins"
       include_role:
-        name: "pablofelix.jenkins"
+        name: "jenkins"

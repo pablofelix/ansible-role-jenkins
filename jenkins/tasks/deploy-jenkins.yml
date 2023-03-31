@@ -1,0 +1,38 @@
+---
+- name: Create Service Account 
+  kubernetes.core.k8s:
+    state: present
+    apply: yes
+    definition: "{{ lookup('template', 'jenkins-service-account.yml.j2') | from_yaml_all }}"
+  register: jenkins_service_account
+
+- name: Create local persistent volume
+  kubernetes.core.k8s:
+    state: present
+    apply: yes
+    definition: "{{ lookup('template', 'jenkins-persistent-volume.yml.j2') | from_yaml_all }}"
+
+- name: Create Jenkins Deployment
+  kubernetes.core.k8s:
+    state: present
+    apply: yes
+    definition: "{{ lookup('template', 'jenkins-deployment.yml.j2') | from_yaml_all }}"
+  register: jenkins_deployment
+
+- name: Create Jenkins Service 
+  kubernetes.core.k8s:
+    state: present
+    apply: yes
+    definition: "{{ lookup('template', 'jenkins-service.yml.j2') | from_yaml_all }}"
+  register: jenkins_service
+
+- name: Create Jenkins route 
+  kubernetes.core.k8s: 
+    state: present
+    apply: yes
+    definition: "{{ lookup('template', 'jenkins-route.yml.j2') | from_yaml }}"
+  register: jenkins_route
+
+- name: Show Jenkins route 
+  debug:
+    msg: "Jenkins route is {{ jenkins_route.result.spec.host }}"

@@ -1,0 +1,69 @@
+---
+- name: Create Jenkins pipeline project
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ jenkins.project }}"
+  tags:
+    - jenkins
+
+- name: Expose default registry route for OpenShift
+  kubernetes.core.k8s_json_patch:
+    api_version: imageregistry.operator.openshift.io/v1
+    kind: Config
+    name: cluster
+    namespace: openshift-image-registry
+    patch:
+      - op: replace
+        path: /spec/defaultRoute
+        value: true
+
+- name: Create jenkins Dockerfile
+  template:
+    src: "Dockerfile.j2"
+    dest: "{{ jenkins.containerfile.path }}/{{ jenkins.containerfile.name }}"
+  tags:
+    - jenkins
+    
+- name: Verify imagestream jenkins exists
+  k8s_info:
+    api_version: image.openshift.io/v1
+    kind: ImageStream
+    name: jenkins
+    namespace: "{{ jenkins.project }}"
+  register: jenkins_imagestream
+  tags:
+    - jenkins
+
+- name: Set user permissions to push images in registry
+  shell: "oc policy add-role-to-user registry-editor {{ lookup('ansible.builtin.pipe', 'oc whoami')}}"
+  changed_when: false
+  tags:
+    - jenkins
+
+- name: Set user permissions to pull images in registry
+  shell: "oc policy add-role-to-user registry-viewer {{ lookup('ansible.builtin.pipe', 'oc whoami')}}"
+  changed_when: false
+  tags:
+    - jenkins
+
+- name: Push image to OpenShift registry
+  containers.podman.podman_image:
+    name: "{{ lookup('ansible.builtin.pipe', 'oc registry info') }}/{{ jenkins.project }}/{{ jenkins.image.name }}"
+    tag: "{{ jenkins.image.tag }}"
+    path: "{{ jenkins.containerfile.path }}"
+    build:
+      file: "{{ jenkins.containerfile.name }}"
+    pull: false
+    push: true
+    tls_verify: false
+    username: "{{ lookup('ansible.builtin.pipe', 'oc whoami') }}"
+    password: "{{ lookup('ansible.builtin.pipe', 'oc whoami -t') }}"
+    push_args:
+      dest: "{{ lookup('ansible.builtin.pipe', 'oc registry info') }}/{{ jenkins.project }}/{{ jenkins.image.name }}:{{ jenkins.image.tag }}"
+  when: jenkins_imagestream.resources | length == 0 
+  tags:
+    - jenkins

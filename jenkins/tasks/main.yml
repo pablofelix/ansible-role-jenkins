@@ -1,2 +1,25 @@
 ---
 # tasks file for jenkins
+- name: Get Cluster information from the cluster
+  shell: oc whoami --show-server
+  register: cluster_info
+  changed_when: false
+  failed_when: cluster_info.rc != 0
+  tags:
+    - cluster_info
+
+- name: Show cluster information and verify the url
+  debug:
+    msg: "{{ cluster_info.stdout }}"
+  tags:
+    - cluster_info
+
+- name: include tasks
+  include_tasks: "{{ install_jenkins }}"
+  loop:
+    - customize-jenkins-image.yml
+    - deploy-jenkins.yml
+  loop_control:
+    loop_var: install_jenkins
+  tags:
+    - jenkins
